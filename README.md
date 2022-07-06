@@ -1,6 +1,6 @@
 # Duration Picker for flutter
 
-Fork from flutter_duration_picker. https://github.com/cdharris/flutter_duration_picker
+Fork from duration_picker. https://github.com/juliansteenbakker/duration_picker
 
 A little widget for picking durations. Heavily inspired from the Material Design time picker widget.
 
