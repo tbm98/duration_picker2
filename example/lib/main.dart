@@ -1,5 +1,5 @@
+import 'package:duration_picker2/duration_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:duration_picker/duration_picker.dart';
 
 void main() => runApp(const MyApp());
 
@@ -11,6 +11,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Duration Picker Demo',
       theme: ThemeData(
+        useMaterial3: true,
         primarySwatch: Colors.blue,
       ),
       home: const MyHomePage(title: 'Duration Picker Demo'),
@@ -60,8 +61,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     initialTime: const Duration(seconds: 30),
                     baseUnit: BaseUnit.second,
                   );
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Chose duration: $resultingDuration')));
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('Chose duration: $resultingDuration')));
                 },
                 tooltip: 'Popup Duration Picker',
                 child: const Icon(Icons.add),
