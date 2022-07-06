@@ -654,9 +654,8 @@ class _DurationPickerDialogState extends State<DurationPickerDialog> {
   @override
   Widget build(BuildContext context) {
     assert(debugCheckHasMediaQuery(context));
-    final theme = Theme.of(context);
     final Widget picker = Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(32.0),
         child: AspectRatio(
             aspectRatio: 1.0,
             child: _Dial(
