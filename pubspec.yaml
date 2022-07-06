@@ -1,6 +1,6 @@
 name: duration_picker2
 description: A time picker widget that can select both minutes and hours. Fork from duration_picker.
-version: 2.0.0
+version: 2.0.2
 homepage: https://github.com/tbm98/duration_picker2
 
 environment:

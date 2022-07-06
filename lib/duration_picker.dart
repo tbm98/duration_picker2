@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 const Duration _kDialAnimateDuration = Duration(milliseconds: 200);
 
@@ -185,18 +186,25 @@ class DialPainter extends CustomPainter {
 }
 
 class _Dial extends StatefulWidget {
-  const _Dial(
-      {required this.duration,
-      required this.onChanged,
-      this.baseUnit = BaseUnit.minute,
-      this.snapToMins = 1.0});
+  const _Dial({
+    required this.duration,
+    required this.onChanged,
+    this.minTime,
+    this.maxTime,
+    this.baseUnit = BaseUnit.minute,
+    this.snapToMins = 1.0,
+    this.enableHapticFeedback = true,
+  });
 
   final Duration duration;
+  final Duration? minTime;
+  final Duration? maxTime;
   final ValueChanged<Duration> onChanged;
   final BaseUnit baseUnit;
 
   /// The resolution of mins of the dial, i.e. if snapToMins = 5.0, only durations of 5min intervals will be selectable.
   final double? snapToMins;
+  final bool enableHapticFeedback;
 
   @override
   _DialState createState() => _DialState();
@@ -255,6 +263,7 @@ class _DialState extends State<_Dial> with SingleTickerProviderStateMixin {
   bool _dragging = false;
   int _baseUnitValue = 0;
   double _turningAngle = 0.0;
+  Duration? lastChanged;
 
   static double _nearest(double target, double a, double b) {
     return ((target - a).abs() < (target - b).abs()) ? a : b;
@@ -359,7 +368,13 @@ class _DialState extends State<_Dial> with SingleTickerProviderStateMixin {
     _secondaryUnitValue = _secondaryUnitHand();
     _baseUnitValue = _baseUnitHand();
     var d = _angleToDuration(_turningAngle);
-    widget.onChanged(d);
+    if (lastChanged == null || lastChanged!.compareTo(d) == 0) {
+      lastChanged = d;
+      if (widget.enableHapticFeedback) {
+        HapticFeedback.selectionClick();
+      }
+      widget.onChanged(d);
+    }
 
     return d;
   }
@@ -423,24 +438,45 @@ class _DialState extends State<_Dial> with SingleTickerProviderStateMixin {
   Duration _baseUnitToDuration(baseUnitValue) {
     int unitFactor = _getBaseUnitToSecondaryUnitFactor(widget.baseUnit);
 
+    Duration result;
+
     switch (widget.baseUnit) {
       case BaseUnit.millisecond:
-        return Duration(
+        result = Duration(
             seconds: (baseUnitValue ~/ unitFactor).toInt(),
             milliseconds: (baseUnitValue % unitFactor.toDouble()).toInt());
+        break;
       case BaseUnit.second:
-        return Duration(
+        result = Duration(
             minutes: (baseUnitValue ~/ unitFactor).toInt(),
             seconds: (baseUnitValue % unitFactor.toDouble()).toInt());
+        break;
       case BaseUnit.minute:
-        return Duration(
+        result = Duration(
             hours: (baseUnitValue ~/ unitFactor).toInt(),
             minutes: (baseUnitValue % unitFactor.toDouble()).toInt());
+        break;
       case BaseUnit.hour:
-        return Duration(
+        result = Duration(
             days: (baseUnitValue ~/ unitFactor).toInt(),
             hours: (baseUnitValue % unitFactor.toDouble()).toInt());
+        break;
     }
+    if (widget.minTime != null && result < widget.minTime!) {
+      result = widget.minTime!;
+      _turningAngle = _getThetaForDuration(result, widget.baseUnit);
+      _turningAngle = _kPiByTwo - _turningAngleFactor() * _kTwoPi;
+      _secondaryUnitValue = _secondaryUnitHand();
+      _baseUnitValue = _baseUnitHand();
+    }
+    if (widget.maxTime != null && result > widget.maxTime!) {
+      result = widget.maxTime!;
+      _turningAngle = _getThetaForDuration(result, widget.baseUnit);
+      _turningAngle = _kPiByTwo - _turningAngleFactor() * _kTwoPi;
+      _secondaryUnitValue = _secondaryUnitHand();
+      _baseUnitValue = _baseUnitHand();
+    }
+    return result;
   }
 
   String _durationToBaseUnitString(Duration duration) {
@@ -608,12 +644,26 @@ class DurationPickerDialog extends StatefulWidget {
     required this.initialTime,
     this.baseUnit = BaseUnit.minute,
     this.snapToMins = 1.0,
-  }) : super(key: key);
+    this.minTime,
+    this.maxTime,
+    this.enableHapticFeedback = true,
+  })  : assert(
+            (minTime == null || (initialTime >= minTime)) &&
+                    (maxTime == null || (initialTime <= maxTime)) ||
+                (minTime != null &&
+                    maxTime != null &&
+                    initialTime >= minTime &&
+                    initialTime <= maxTime),
+            'invalid time'),
+        super(key: key);
 
   /// The duration initially selected when the dialog is shown.
   final Duration initialTime;
+  final Duration? minTime;
+  final Duration? maxTime;
   final BaseUnit baseUnit;
   final double snapToMins;
+  final bool enableHapticFeedback;
 
   @override
   State<DurationPickerDialog> createState() => _DurationPickerDialogState();
@@ -660,9 +710,12 @@ class _DurationPickerDialogState extends State<DurationPickerDialog> {
             aspectRatio: 1.0,
             child: _Dial(
               duration: _selectedDuration!,
+              minTime: widget.minTime,
+              maxTime: widget.maxTime,
               onChanged: _handleTimeChanged,
               baseUnit: widget.baseUnit,
               snapToMins: widget.snapToMins,
+              enableHapticFeedback: widget.enableHapticFeedback,
             )));
 
     final Widget actions = ButtonBarTheme(
@@ -737,35 +790,55 @@ Future<Duration?> showDurationPicker({
   required Duration initialTime,
   BaseUnit baseUnit = BaseUnit.minute,
   double snapToMins = 1.0,
+  Duration? minTime,
+  Duration? maxTime,
+  bool enableHapticFeedback = true,
 }) async {
   return await showDialog<Duration>(
     context: context,
     builder: (BuildContext context) => DurationPickerDialog(
       initialTime: initialTime,
+      minTime: minTime,
+      maxTime: maxTime,
       baseUnit: baseUnit,
       snapToMins: snapToMins,
+      enableHapticFeedback: enableHapticFeedback,
     ),
   );
 }
 
 class DurationPicker extends StatelessWidget {
-  final Duration duration;
+  final Duration initialTime;
+  final Duration? minTime;
+  final Duration? maxTime;
   final ValueChanged<Duration> onChange;
   final BaseUnit baseUnit;
   final double? snapToMins;
 
   final double? width;
   final double? height;
+  final bool enableHapticFeedback;
 
-  const DurationPicker(
-      {Key? key,
-      this.duration = const Duration(minutes: 0),
-      required this.onChange,
-      this.baseUnit = BaseUnit.minute,
-      this.snapToMins,
-      this.width,
-      this.height})
-      : super(key: key);
+  const DurationPicker({
+    Key? key,
+    this.initialTime = const Duration(minutes: 0),
+    this.minTime,
+    this.maxTime,
+    required this.onChange,
+    this.baseUnit = BaseUnit.minute,
+    this.snapToMins,
+    this.width,
+    this.height,
+    this.enableHapticFeedback = true,
+  })  : assert(
+            (minTime == null || (initialTime >= minTime)) &&
+                    (maxTime == null || (initialTime <= maxTime)) ||
+                (minTime != null &&
+                    maxTime != null &&
+                    initialTime >= minTime &&
+                    initialTime <= maxTime),
+            'invalid time'),
+        super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -778,10 +851,13 @@ class DurationPicker extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: _Dial(
-                  duration: duration,
+                  duration: initialTime,
+                  minTime: minTime,
+                  maxTime: maxTime,
                   onChanged: onChange,
                   baseUnit: baseUnit,
                   snapToMins: snapToMins,
+                  enableHapticFeedback: enableHapticFeedback,
                 ),
               ),
             ]));

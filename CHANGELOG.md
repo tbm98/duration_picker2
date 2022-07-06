@@ -1,3 +1,9 @@
+## 2.0.2
+* Add minTime,maxTime
+* adjust padding to 32
+* use default theme dialog
+* enable HapticFeedback
+
 ## 2.0.0
 * lints 2.0.1
 

@@ -29,8 +29,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Duration _duration = const Duration(hours: 0, minutes: 0);
-
+  Duration _initTime = const Duration(seconds: 21);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,10 +42,15 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             Expanded(
                 child: DurationPicker(
-              duration: _duration,
+              initialTime: _initTime,
+              minTime: const Duration(seconds: 15),
+              maxTime: const Duration(seconds: 30),
+              enableHapticFeedback: false,
               baseUnit: BaseUnit.second,
               onChange: (val) {
-                setState(() => _duration = val);
+                setState(() {
+                  _initTime = val;
+                });
               },
               snapToMins: 5.0,
             ))
@@ -58,7 +62,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   var resultingDuration = await showDurationPicker(
                     context: context,
-                    initialTime: const Duration(seconds: 30),
+                    initialTime: const Duration(seconds: 21),
+                    minTime: const Duration(seconds: 15),
+                    maxTime: const Duration(seconds: 30),
                     baseUnit: BaseUnit.second,
                   );
                   ScaffoldMessenger.of(context)
